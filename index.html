@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WebGIS Produksi Jeruk Kabupaten Karo</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+
+  <!-- Data GeoJSON (embed sebagai variabel JS) -->
+  <script src="data/karo_jeruk.geojson"></script>
+  <script src="data/ladang_karo.geojson"></script>
+
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ===================== LOADING ===================== -->
+<div id="loading">
+  <div class="ld-inner">
+    <div class="ld-icon">🍊</div>
+    <div class="ld-title">WebGIS & Geospatial Mashup Karo</div>
+    <div class="ld-sub">Memuat data spasial…</div>
+    <div class="ld-bar"><div class="ld-fill"></div></div>
+  </div>
+</div>
+
+<!-- ===================== NAVBAR ===================== -->
+<header id="navbar">
+  <div class="nav-left">
+    <div class="nav-logo">🍊</div>
+    <div class="nav-text">
+      <span class="nav-title">WebGIS & Geospatial Mashup Produksi Jeruk</span>
+      <span class="nav-sub">Kabupaten Karo · Sumatera Utara · 2025</span>
+    </div>
+  </div>
+  <div class="nav-pills">
+    <button class="pill active" id="btn-webgis"  onclick="switchView('webgis')">🗺 Peta</button>
+    <button class="pill"         id="btn-mashup"  onclick="switchView('mashup')">📊 Dashboard</button>
+  </div>
+  <button id="btn-sidebar" onclick="toggleSidebar()" title="Toggle panel">☰</button>
+</header>
+
+<!-- ===================== MAIN LAYOUT ===================== -->
+<div id="main">
+
+  <!-- ---- SIDEBAR ---- -->
+  <aside id="sidebar">
+
+    <!-- Stat cards -->
+    <div class="sb-section">
+      <div class="sb-label">RINGKASAN WILAYAH</div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="sv-kec">17</div>
+          <div class="stat-lbl">Kecamatan</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="sv-prod">-</div>
+          <div class="stat-lbl">Juta Kuintal</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="sv-top">-</div>
+          <div class="stat-lbl">Sentra Teratas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="sv-pct">-</div>
+          <div class="stat-lbl">% Produksi Top 3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer toggles -->
+    <div class="sb-section">
+      <div class="sb-label">LAYER PETA</div>
+      <div class="layer-item" onclick="toggleLayer('jeruk')">
+        <span class="dot" style="background:#e67300"></span>
+        <span class="layer-name">Choropleth Produksi Jeruk</span>
+        <div class="sw on" id="sw-jeruk"></div>
+      </div>
+      <div class="layer-item" onclick="toggleLayer('ladang')">
+        <span class="dot" style="background:#8fbc5a"></span>
+        <span class="layer-name">Area Ladang/Perkebunan</span>
+        <div class="sw" id="sw-ladang"></div>
+      </div>
+      <div class="layer-item" onclick="toggleLayer('buffer')">
+        <span class="dot" style="background:#3b82f6"></span>
+        <span class="layer-name">Buffer Analisis Spasial</span>
+        <div class="sw" id="sw-buffer"></div>
+      </div>
+      <div class="layer-item" onclick="toggleLayer('label')">
+        <span class="dot" style="background:#64748b"></span>
+        <span class="layer-name">Label Kecamatan</span>
+        <div class="sw on" id="sw-label"></div>
+      </div>
+      <div class="layer-item" onclick="toggleLayer('centroid')"><span class="dot" style="background:#d6dc26"></span>
+        <span class="layer-name">Sentra Produksi Jeruk</span>
+        <div class="sw" id="sw-centroid"></div>
+      </div>
+    </div>
+
+    <!-- Legenda choropleth -->
+    <div class="sb-section">
+      <div class="sb-label">LEGENDA PRODUKSI (Kuintal)</div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels"><span>Rendah</span><span>Tinggi</span></div>
+      <div class="legend-items">
+        <div class="li"><div class="ls" style="background:#fef3c7"></div><span>0 – 5.000</span></div>
+        <div class="li"><div class="ls" style="background:#fbbf24"></div><span>5.001 – 30.000</span></div>
+        <div class="li"><div class="ls" style="background:#f97316"></div><span>30.001 – 90.000</span></div>
+        <div class="li"><div class="ls" style="background:#ea580c"></div><span>90.001 – 200.000</span></div>
+        <div class="li"><div class="ls" style="background:#9a3412"></div><span>> 200.000</span></div>
+        <div class="li" style="margin-top:6px"><div class="ls" style="background:#8fbc5a;opacity:.6"></div><span>Area Ladang</span></div>
+        <div class="li"><div class="ls" style="background:rgba(59,130,246,.2);border:1px dashed #3b82f6"></div><span>Buffer 10 km</span></div>
+        <div class="li">
+        <div class="ls" style="background:#d6dc26;border-radius:50%"></div><span>Sentra Produksi Jeruk</span>
+    </div>
+      </div>
+    </div>
+
+    <!-- Analisis tombol -->
+    <div class="sb-section">
+      <div class="sb-label">ANALISIS SPASIAL</div>
+      <button class="ana-btn" onclick="runBufferAnalysis()">⭕ Tampilkan Buffer 10 km</button>
+      <button class="ana-btn warn" onclick="highlightTop()">🔥 Sorot Sentra Utama (Top 3)</button>
+      <button class="ana-btn muted" onclick="resetAll()">↺ Reset Semua</button>
+      <div id="ana-result"></div>
+    </div>
+
+    <!-- Footer sidebar -->
+    <div class="sb-footer">
+      Sumber: BPS Kab. Karo · BIG · OSM<br/>
+      Dibuat oleh: Alfika Wigi A (23/515220/GE/10154) 
+      untuk Responsi Praktikum TIG 2026
+    </div>
+
+  </aside><!-- end sidebar -->
+
+  <!-- ---- KONTEN UTAMA ---- -->
+  <div id="content">
+
+    <!-- VIEW: WEBGIS MAP -->
+    <div id="view-webgis">
+      <div id="map"></div>
+
+      <!-- Info panel muncul saat klik kecamatan -->
+      <div id="info-panel">
+        <button id="ip-close" onclick="closeInfo()">×</button>
+        <div class="ip-head">
+          <div class="ip-kec" id="ip-kec">—</div>
+          <div class="ip-kab">Kabupaten Karo, Sumatera Utara</div>
+        </div>
+        <div class="ip-body">
+          <div class="ip-row">
+            <span class="ip-lbl">🍊 Produksi Jeruk</span>
+            <span class="ip-val orange" id="ip-prod">—</span>
+          </div>
+          <div class="ip-row">
+            <span class="ip-lbl">📦 Dalam Ton</span>
+            <span class="ip-val" id="ip-ton">—</span>
+          </div>
+          <div class="ip-row">
+            <span class="ip-lbl">📊 % dari Total</span>
+            <span class="ip-val" id="ip-pct">—</span>
+          </div>
+          <div class="ip-row">
+            <span class="ip-lbl">🏆 Peringkat</span>
+            <span class="ip-val" id="ip-rank">—</span>
+          </div>
+          <div class="ip-row">
+            <span class="ip-lbl">🗺 Luas (km²)</span>
+            <span class="ip-val" id="ip-luas">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buffer legend -->
+      <div id="buf-legend">
+        <strong>⭕ Buffer Analisis (10 km)</strong><br/>
+        <span style="font-size:11px;color:#64748b">Radius dari pusat sentra produksi<br/>jeruk tertinggi Kabupaten Karo</span>
+      </div>
+
+    </div><!-- end view-webgis -->
+
+    <!-- VIEW: MASHUP DASHBOARD -->
+    <div id="view-mashup" style="display:none;">
+      <div class="dash-grid">
+
+        <!-- Mini peta -->
+        <div class="dash-card span2">
+          <div class="dc-title">🗺 Peta Produksi (Overview)</div>
+          <div id="map-mini"></div>
+        </div>
+
+        <!-- Chart bar -->
+        <div class="dash-card span2">
+          <div class="dc-title">📊 Produksi Jeruk per Kecamatan (Kuintal)</div>
+          <canvas id="chartBar"></canvas>
+        </div>
+
+        <!-- Chart donut -->
+        <div class="dash-card">
+          <div class="dc-title">🔵 Distribusi Produksi</div>
+          <canvas id="chartDonut"></canvas>
+        </div>
+
+        <!-- Ranking table -->
+        <div class="dash-card">
+          <div class="dc-title">🏆 Ranking Kecamatan</div>
+          <div id="rank-table"></div>
+        </div>
+
+        <!-- Stat besar -->
+        <div class="dash-card span2">
+          <div class="dc-title">📈 Statistik Utama</div>
+          <div class="big-stats" id="big-stats"></div>
+        </div>
+
+      </div><!-- dash-grid -->
+    </div><!-- end view-mashup -->
+
+  </div><!-- end content -->
+</div><!-- end main -->
+
+<!-- ===================== SCRIPT ===================== -->
+<script src="script.js"></script>
+</body>
+</html>
